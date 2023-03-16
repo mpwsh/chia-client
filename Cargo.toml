@@ -3,7 +3,7 @@ name = "chia-node"
 version = "0.4.0"
 description = "An API wrapper for Chia node daemons"
 license = "MIT"
-repository = "https://gitlab.cronce.io/foss/chia-node-rs"
+repository = "https://github.com/mpwsh/chia-node-rs"
 authors = ["Mike Cronce <mikequadra-tec.net>", "mpw <x@mpw.sh>"]
 edition = "2021"
 
