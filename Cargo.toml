@@ -4,15 +4,19 @@ version = "0.4.0"
 description = "An API wrapper for Chia node daemons"
 license = "MIT"
 repository = "https://gitlab.cronce.io/foss/chia-node-rs"
-authors = ["Mike Cronce <mikequadra-tec.net>"]
-edition = "2018"
+authors = ["Mike Cronce <mikequadra-tec.net>", "mpw <x@mpw.sh>"]
+edition = "2021"
 
 [dependencies]
 chrono = {version = "0.4", features = ["serde"]}
+chia_models = { version = "0.4.0", git = "https://github.com/mpwsh/chia-models" }
 reqwest = {version = "0.11", default_features = false, features = ["json", "rustls-tls"]}
 serde = {version = "1", features = ["derive"]}
 serde_json = "1"
 serde_with = {version = "1.9", features = ["chrono"]}
 thiserror = "1"
 tokio = {version = "1", features = ["fs"]}
-
+anyhow = "1.0.57"
+bech32 = "0.9.1"
+hex = "0.4.3"
+log = "0.4.17"
