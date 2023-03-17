@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use reqwest::ClientBuilder;
 use reqwest::Response;
-use serde_json::json;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -45,7 +45,7 @@ impl Client {
         //    self.cmd("get_blockchain_state", None).await?.text().await?;
         //println!("{res2}");
         let res: BlockchainStateResponse =
-            self.cmd("get_blockchain_state", None).await?.json().await?; 
+            self.cmd("get_blockchain_state", None).await?.json().await?;
         match res.blockchain_state {
             Some(r) => Ok(r),
             None => Err(anyhow!("{:#?}", res.error)),
@@ -457,21 +457,27 @@ impl Client {
     pub async fn get_coin_records_by_puzzle_hash(
         &self,
         puzzle_hash: &str,
-        start_height: u64,
-        end_height: u64,
-        include_spent_coins: bool,
+        start_height: Option<u64>,
+        end_height: Option<u64>,
+        include_spent_coins: Option<bool>,
     ) -> Result<Vec<CoinRecord>> {
-        let json = json!({
-        "puzzle_hash": puzzle_hash,
-        "start_height": start_height,
-        "end_height": end_height,
-        "include_spent_coins": include_spent_coins,
-        });
+        let mut json = json!({ "puzzle_hash": puzzle_hash });
+
+        if let Some(start_height) = start_height {
+            json["start_height"] = Value::from(start_height);
+        }
+        if let Some(end_height) = end_height {
+            json["end_height"] = Value::from(end_height);
+        }
+        if let Some(include_spent_coins) = include_spent_coins {
+            json["include_spent_coins"] = Value::from(include_spent_coins);
+        }
         let res: CoinRecordsResponse = self
             .cmd("get_coin_records_by_puzzle_hash", Some(json.to_string()))
             .await?
             .json()
             .await?;
+
         match res.coin_records {
             Some(r) => Ok(r),
             None => Err(anyhow!("{:#?}", res.error)),
@@ -544,7 +550,6 @@ impl Client {
                     .await
             }
         }
-      
     }
 
     fn make_url(&self, command: &str) -> String {

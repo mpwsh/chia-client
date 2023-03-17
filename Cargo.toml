@@ -20,3 +20,7 @@ anyhow = "1.0.57"
 bech32 = "0.9.1"
 hex = "0.4.3"
 log = "0.4.17"
+
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
