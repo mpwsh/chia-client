@@ -22,10 +22,22 @@ pub struct Cli {
 
 #[derive(Debug, StructOpt)]
 pub struct GlobalOptions {
-    #[structopt(short, long = "key-path", global = true, help = "Path to FullNode Key", parse(from_os_str))]
+    #[structopt(
+        short,
+        long = "key-path",
+        global = true,
+        help = "Path to FullNode Key",
+        parse(from_os_str)
+    )]
     key_path: Option<PathBuf>,
 
-    #[structopt(short, long = "cert-path", global = true, help = "Path to FullNode Cert", parse(from_os_str))]
+    #[structopt(
+        short,
+        long = "cert-path",
+        global = true,
+        help = "Path to FullNode Cert",
+        parse(from_os_str)
+    )]
     cert_path: Option<PathBuf>,
 
     #[structopt(long, global = true, help = "IP of Chia Node")]
@@ -34,7 +46,12 @@ pub struct GlobalOptions {
     #[structopt(long, global = true, help = "Port of Chia FullNode RPC")]
     port: Option<u16>,
 
-    #[structopt(long, global = true, help = "config path for chiactl", parse(from_os_str))]
+    #[structopt(
+        long,
+        global = true,
+        help = "config path for chiactl",
+        parse(from_os_str)
+    )]
     config: Option<PathBuf>,
 }
 
@@ -100,11 +117,9 @@ async fn main() -> Result<()> {
     let config = cli.load_config();
     let client = FullNodeClient::new(config.await?).await?;
     match cli.cmd {
-        Command::Get { subcommand } => {
-            match subcommand {
-                GetSubcommand::Balance { address } => get_balance(&client, address).await?,
-            }
-        }
+        Command::Get { subcommand } => match subcommand {
+            GetSubcommand::Balance { address } => get_balance(&client, address).await?,
+        },
     }
 
     Ok(())
