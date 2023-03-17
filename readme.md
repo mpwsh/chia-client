@@ -25,15 +25,23 @@ Balance: 0.000000000001 XCH
 
 There's another example to create a simple `CLI` called `chiactl` to get balance as well, that you can expand with more useful commands.
 
-## Using chiactl
+## Using example project `chiactl`
 
-`cd` into `./examples` and update the contents of `ctlconfig.yaml` to suit your needs, and then run the following to fetch the balance for a wallet address:
+Update the contents of [./examples/ctlconfig.yaml](./examples/ctlconfig.yaml) to suit your needs, and then run the following to fetch the balance for a wallet address:
 
 ```bash
-cargo run --example chiactl -- get balance <wallet_address> --config ctlconfig.yaml
+cargo run --example chiactl -- get balance <wallet_address> --config examples/ctlconfig.yaml
 ```
 
 > You could also provide these values using command arguments, or specify the path of the config file in an arg as well. Use --help to get all available arguments.
+
+More commands:
+
+```bash
+cargo run --example chiactl -- get blockchain --config examples/ctlconfig.yaml
+cargo run --example chiactl -- get network --config examples/ctlconfig.yaml
+cargo run --example chiactl -- get blockmetrics --config examples/ctlconfig.yaml
+```
 
 # Contributing
 

@@ -3,6 +3,7 @@ use chia_node::fullnode::Client as FullNodeClient;
 use chia_node::fullnode::Config as FullNodeConfig;
 use chia_node::util::decode_puzzle_hash;
 use serde::Deserialize;
+use serde_json::to_string_pretty;
 use std::fs;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -79,6 +80,12 @@ pub enum GetSubcommand {
         #[structopt(name = "wallet_address")]
         address: String,
     },
+    #[structopt(name = "network")]
+    NetworkInfo,
+    #[structopt(name = "blockchain")]
+    BlockchainState,
+    #[structopt(name = "blockmetrics")]
+    BlockCountMetrics,
 }
 
 impl Cli {
@@ -119,6 +126,9 @@ async fn main() -> Result<()> {
     match cli.cmd {
         Command::Get { subcommand } => match subcommand {
             GetSubcommand::Balance { address } => get_balance(&client, address).await?,
+            GetSubcommand::NetworkInfo => get_network_info(&client).await?,
+            GetSubcommand::BlockchainState => get_blockchain_state(&client).await?,
+            GetSubcommand::BlockCountMetrics => get_block_count_metrics(&client).await?,
         },
     }
 
@@ -133,5 +143,26 @@ async fn get_balance(client: &FullNodeClient, address: String) -> Result<()> {
     let balance_mojos: u64 = response.iter().map(|record| record.coin.amount).sum();
     let balance_xch: f64 = balance_mojos as f64 / 1_000_000_000_000.0;
     println!("Balance: {:.12} XCH", balance_xch);
+    Ok(())
+}
+
+async fn get_network_info(client: &FullNodeClient) -> Result<()> {
+    let res = client.get_network_info().await?;
+    let json = to_string_pretty(&res)?;
+    println!("{}", json);
+    Ok(())
+}
+
+async fn get_blockchain_state(client: &FullNodeClient) -> Result<()> {
+    let res = client.get_blockchain_state().await?;
+    let json = to_string_pretty(&res)?;
+    println!("{}", json);
+    Ok(())
+}
+
+async fn get_block_count_metrics(client: &FullNodeClient) -> Result<()> {
+    let res = client.get_block_count_metrics().await?;
+    let json = to_string_pretty(&res)?;
+    println!("{}", json);
     Ok(())
 }
