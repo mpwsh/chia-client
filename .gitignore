@@ -2,3 +2,4 @@
 Cargo.lock
 /dep
 ctlconfig.yaml
+newconfig.yaml

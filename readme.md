@@ -41,6 +41,7 @@ More commands:
 cargo run --example chiactl -- get blockchain --config examples/ctlconfig.yaml
 cargo run --example chiactl -- get network --config examples/ctlconfig.yaml
 cargo run --example chiactl -- get blockmetrics --config examples/ctlconfig.yaml
+cargo run --example chiactl -- get block 3392968 --config examples/ctlconfig.yaml
 ```
 
 # Contributing

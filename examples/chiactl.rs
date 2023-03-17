@@ -1,9 +1,9 @@
 use anyhow::Result;
+use serde_json::to_string_pretty;
 use chia_node::fullnode::Client as FullNodeClient;
 use chia_node::fullnode::Config as FullNodeConfig;
 use chia_node::util::decode_puzzle_hash;
 use serde::Deserialize;
-use serde_json::to_string_pretty;
 use std::fs;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -86,6 +86,11 @@ pub enum GetSubcommand {
     BlockchainState,
     #[structopt(name = "blockmetrics")]
     BlockCountMetrics,
+    #[structopt(name = "block")]
+    Block {
+        #[structopt(name = "block_hash_or_height", help = "Block Hash or Height")]
+        value: String,
+    }
 }
 
 impl Cli {
@@ -129,9 +134,21 @@ async fn main() -> Result<()> {
             GetSubcommand::NetworkInfo => get_network_info(&client).await?,
             GetSubcommand::BlockchainState => get_blockchain_state(&client).await?,
             GetSubcommand::BlockCountMetrics => get_block_count_metrics(&client).await?,
+            GetSubcommand::Block { value } => get_block(&client, value).await?,
         },
     }
 
+    Ok(())
+}
+
+async fn get_block(client: &FullNodeClient, value: String) -> Result<()> {
+    let response = match value.parse::<u64>() {
+        Ok(height) => client.get_block_by_height(height).await,
+        Err(_) => client.get_block(&value).await,
+    };
+
+    let json = serde_json::to_string_pretty(&response?)?;
+    println!("{}", json);
     Ok(())
 }
 
@@ -158,6 +175,7 @@ async fn get_blockchain_state(client: &FullNodeClient) -> Result<()> {
     let json = to_string_pretty(&res)?;
     println!("{}", json);
     Ok(())
+
 }
 
 async fn get_block_count_metrics(client: &FullNodeClient) -> Result<()> {
