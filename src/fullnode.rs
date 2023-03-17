@@ -10,30 +10,87 @@ use crate::Error;
 
 use chia_models::common::*;
 pub use chia_models::fullnode::*;
+use std::net::SocketAddr;
+use std::path::PathBuf;
+
+pub struct Config {
+    pub addr: SocketAddr,
+    pub key_path: PathBuf,
+    pub cert_path: PathBuf,
+}
+
+impl Config {
+    pub fn new(addr: SocketAddr, key_path: &Path, cert_path: &Path) -> Self {
+        Self {
+            addr,
+            key_path: key_path.to_path_buf(),
+            cert_path: cert_path.to_path_buf(),
+        }
+    }
+}
+pub struct ConfigBuilder {
+    addr: Option<SocketAddr>,
+    key_path: Option<PathBuf>,
+    cert_path: Option<PathBuf>,
+}
+impl Default for ConfigBuilder {
+     fn default() -> Self {
+         Self::new()
+     }
+} 
+impl ConfigBuilder {
+    pub fn new() -> Self {
+        Self {
+            addr: None,
+            key_path: None,
+            cert_path: None,
+        }
+    }
+
+    pub fn addr(mut self, addr: SocketAddr) -> Self {
+        self.addr = Some(addr);
+        self
+    }
+
+    pub fn key_path<P: Into<PathBuf>>(mut self, key_path: P) -> Self {
+        self.key_path = Some(key_path.into());
+        self
+    }
+
+    pub fn cert_path<P: Into<PathBuf>>(mut self, cert_path: P) -> Self {
+        self.cert_path = Some(cert_path.into());
+        self
+    }
+
+    pub fn build(self) -> Result<Config, &'static str> {
+        let addr = self.addr.ok_or("Address is required")?;
+        let key_path = self.key_path.ok_or("Key path is required")?;
+        let cert_path = self.cert_path.ok_or("Cert path is required")?;
+
+        Ok(Config {
+            addr,
+            key_path,
+            cert_path,
+        })
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Client {
-    host: String,
-    port: u16,
+    addr: SocketAddr,
     http: reqwest::Client,
 }
 
 impl Client {
-    pub async fn new(
-        host: &str,
-        port: u16,
-        key_file: impl AsRef<Path>,
-        cert_file: impl AsRef<Path>,
-    ) -> Result<Self, Error> {
-        let identity = load_pem_pair(key_file, cert_file).await?;
+    pub async fn new(config: Config) -> Result<Self, Error> {
+        let identity = load_pem_pair(config.key_path, config.cert_path).await?;
         let http = ClientBuilder::new()
             .danger_accept_invalid_certs(true)
             //.danger_accept_invalid_hostnames(true)
             .identity(identity)
             .build()?;
         Ok(Self {
-            host: host.to_string(),
-            port,
+            addr: config.addr,
             http,
         })
     }
@@ -41,9 +98,6 @@ impl Client {
         Ok(self.cmd("get_network_info", None).await?.json().await?)
     }
     pub async fn get_blockchain_state(&self) -> Result<BlockchainState> {
-        //let res2: String =
-        //    self.cmd("get_blockchain_state", None).await?.text().await?;
-        //println!("{res2}");
         let res: BlockchainStateResponse =
             self.cmd("get_blockchain_state", None).await?.json().await?;
         match res.blockchain_state {
@@ -553,6 +607,6 @@ impl Client {
     }
 
     fn make_url(&self, command: &str) -> String {
-        format!("https://{}:{}/{}", &self.host, self.port, &command)
+        format!("https://{}/{}", &self.addr.to_string(), &command)
     }
 }

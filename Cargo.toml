@@ -24,3 +24,6 @@ log = "0.4.17"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
+structopt = "0.3"
+dirs = "3.0"
+serde_yaml = "0.8"
