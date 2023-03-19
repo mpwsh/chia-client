@@ -7,6 +7,9 @@ use hex::ToHex;
 use reqwest::Identity;
 use tokio::fs::read;
 
+#[cfg(feature = "disassemble")]
+use pyo3::{prelude::*, types::IntoPyDict};
+
 pub(crate) async fn load_pem_pair(
     key: impl AsRef<Path>,
     cert: impl AsRef<Path>,
@@ -32,4 +35,31 @@ pub fn encode_puzzle_hash(puzzle_hash: &str, prefix: &str) -> Result<String, Err
         .collect::<Result<Vec<u5>, Error>>()?;
     let encoded = bech32::encode(prefix, bits, Variant::Bech32m)?;
     Ok(encoded)
+}
+
+pub fn mojo_to_xch(amount: u64) -> f64 {
+    amount as f64 / 1_000_000_000_000.0
+}
+
+#[cfg(feature = "disassemble")]
+pub fn disassemble_program(program: &str) -> PyResult<String> {
+    pyo3::prepare_freethreaded_python();
+    let gil = Python::acquire_gil();
+    let py = gil.python();
+
+    let locals = [("program", program)].into_py_dict(py);
+    py.run(
+        "
+from clvm_tools.binutils import disassemble
+from cdv.cmds.util import parse_program
+
+parsed_program = parse_program(program)
+disassembled_program = disassemble(parsed_program)
+",
+        None,
+        Some(locals),
+    )?;
+    let disassembled_program: String =
+        locals.get_item("disassembled_program").unwrap().extract()?;
+    Ok(disassembled_program)
 }

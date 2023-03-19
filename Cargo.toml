@@ -8,7 +8,7 @@ authors = ["Mike Cronce <mikequadra-tec.net>", "mpw <x@mpw.sh>"]
 edition = "2021"
 
 [dependencies]
-chrono = {version = "0.4", features = ["serde"]}
+chrono = { version = "0.4", features = ["serde"] }
 chia_models = { version = "0.4.0", git = "https://github.com/mpwsh/chia-models" }
 reqwest = {version = "0.11", default_features = false, features = ["json", "rustls-tls"]}
 serde = {version = "1", features = ["derive"]}
@@ -20,10 +20,20 @@ anyhow = "1.0.57"
 bech32 = "0.9.1"
 hex = "0.4.3"
 log = "0.4.17"
+pyo3 = { version = "0.18.1", optional = true }
 
+[features]
+disassemble = ["pyo3"]
+default = ["disassemble"]
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
 structopt = "0.3"
 dirs = "3.0"
 serde_yaml = "0.8"
+regex = "1.7.1"
+
+[[example]]
+name = "chiactl"
+path = "examples/chiactl.rs"
+features = ["disassemble"]
