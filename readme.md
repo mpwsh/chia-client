@@ -33,6 +33,12 @@ Update the contents of [./examples/ctlconfig.yaml](./examples/ctlconfig.yaml) to
 cargo run --example chiactl -- get balance <wallet_address> --config examples/ctlconfig.yaml
 ```
 
+Get 'transactions' for a given wallet
+
+```bash
+cargo run --example chiactl -- get transactions <wallet_address> --config examples/ctlconfig.yaml
+```
+
 > You could also provide these values using command arguments, or specify the path of the config file in an arg as well. Use --help to get all available arguments.
 
 More commands:
@@ -42,6 +48,19 @@ cargo run --example chiactl -- get blockchain --config examples/ctlconfig.yaml
 cargo run --example chiactl -- get network --config examples/ctlconfig.yaml
 cargo run --example chiactl -- get blockmetrics --config examples/ctlconfig.yaml
 cargo run --example chiactl -- get block 3392968 --config examples/ctlconfig.yaml
+```
+
+All `get` commands
+
+```bash
+SUBCOMMANDS:
+    balance
+    block
+    blockchain
+    blockmetrics
+    coin
+    network
+    transactions
 ```
 
 # Contributing

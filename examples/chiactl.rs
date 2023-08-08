@@ -1,15 +1,20 @@
 use anyhow::Result;
-use chia_node::fullnode::Client as FullNodeClient;
-use chia_node::fullnode::Config as FullNodeConfig;
-use chia_node::util::{decode_puzzle_hash, encode_puzzle_hash};
+use chia_node::{
+    fullnode::{Client as FullNodeClient, Config as FullNodeConfig, MemPoolItem},
+    util::{decode_puzzle_hash, encode_puzzle_hash, mojo_to_xch},
+};
 use chrono::{DateTime, Utc};
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::to_string_pretty;
-use std::cmp::Ordering;
-use std::fs;
-use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::{
+    cmp::Ordering,
+    collections::HashSet,
+    fs,
+    net::SocketAddr,
+    path::PathBuf,
+    thread,
+    time::{Duration, Instant},
+};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -104,6 +109,18 @@ pub struct Transaction {
     direction: Direction,
     timestamp: Option<DateTime<Utc>>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemPool {
+    height: u64,
+    size: usize,
+    cost: f64,
+    fees: f64,
+    additions: f64,
+    removals: f64,
+    duration: String,
+}
+
 #[derive(Debug, StructOpt)]
 pub enum GetSubcommand {
     #[structopt(name = "network")]
@@ -137,6 +154,11 @@ pub enum GetSubcommand {
     Transactions {
         #[structopt(name = "wallet_address")]
         address: String,
+    },
+    #[structopt(name = "mempool")]
+    MemPool {
+        #[structopt(long = "continuous")]
+        continuous: bool,
     },
 }
 
@@ -185,6 +207,34 @@ impl Cli {
     }
 }
 
+impl MemPool {
+    pub fn new(height: u64) -> Self {
+        Self {
+            height,
+            size: 0,
+            cost: 0.0,
+            additions: 0.0,
+            removals: 0.0,
+            fees: 0.0,
+            duration: String::new(),
+        }
+    }
+
+    pub fn update(&mut self, item: &MemPoolItem) {
+        self.size += 1;
+        self.cost += mojo_to_xch(item.cost);
+        self.fees += mojo_to_xch(item.fee);
+        self.additions += mojo_to_xch(item.additions.iter().map(|coin| coin.amount).sum());
+        self.removals += mojo_to_xch(
+            item.removals
+                .clone()
+                .unwrap_or(Vec::new())
+                .iter()
+                .map(|coin| coin.amount)
+                .sum(),
+        );
+    }
+}
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::from_args();
@@ -194,10 +244,16 @@ async fn main() -> Result<()> {
         Command::Get { subcommand } => match subcommand {
             GetSubcommand::Balance { address } => get_balance(&client, address).await?,
             GetSubcommand::NetworkInfo => get_network_info(&client).await?,
+            GetSubcommand::MemPool { continuous } => get_mempool(&client, continuous).await?,
             GetSubcommand::BlockchainState => get_blockchain_state(&client).await?,
             GetSubcommand::BlockCountMetrics => get_block_count_metrics(&client).await?,
             GetSubcommand::Block { value } => get_block(&client, value).await?,
-            GetSubcommand::Coin { value, show_parent, encode, prefix } => get_coin(&client, value, show_parent, encode, prefix).await?,
+            GetSubcommand::Coin {
+                value,
+                show_parent,
+                encode,
+                prefix,
+            } => get_coin(&client, value, show_parent, encode, prefix).await?,
             GetSubcommand::Transactions { address } => get_transactions(&client, address).await?,
         },
         Command::Clvm { subcommand } => match subcommand {
@@ -217,7 +273,7 @@ async fn get_block(client: &FullNodeClient, value: String) -> Result<()> {
         Err(_) => client.get_block(&value).await,
     };
 
-    let json = serde_json::to_string_pretty(&response?)?;
+    let json = to_string_pretty(&response?)?;
     println!("{}", json);
     Ok(())
 }
@@ -229,16 +285,14 @@ async fn get_coin(
     encode: bool,
     prefix: String,
 ) -> Result<()> {
-    let response = client
-        .get_coin_record_by_name(&value)
-        .await?;
+    let response = client.get_coin_record_by_name(&value).await?;
     let mut coin_record = response.clone();
     if encode {
         let prefix = "xch";
         coin_record.coin.puzzle_hash = encode_puzzle_hash(&response.coin.puzzle_hash, prefix)?;
     }
 
-    let json = serde_json::to_string_pretty(&coin_record)?;
+    let json = to_string_pretty(&coin_record)?;
     println!("{}", json);
 
     if show_parent {
@@ -252,12 +306,11 @@ async fn get_coin(
                 encode_puzzle_hash(&parent_response.coin.puzzle_hash, &prefix)?;
         }
 
-        let parent_json = serde_json::to_string_pretty(&parent_coin_record)?;
+        let parent_json = to_string_pretty(&parent_coin_record)?;
         println!("\nParent Coin:");
         println!("{}", parent_json);
     }
 
-    
     Ok(())
 }
 
@@ -267,8 +320,7 @@ async fn get_balance(client: &FullNodeClient, address: String) -> Result<()> {
         .get_coin_records_by_puzzle_hash(&puzzle_hash, None, None, Some(false))
         .await?;
     let balance_mojos: u64 = response.iter().map(|record| record.coin.amount).sum();
-    let balance_xch: f64 = balance_mojos as f64 / 1_000_000_000_000.0;
-    println!("Balance: {:.12} XCH", balance_xch);
+    println!("Balance: {:.12} XCH", mojo_to_xch(balance_mojos));
     Ok(())
 }
 
@@ -276,6 +328,40 @@ async fn get_network_info(client: &FullNodeClient) -> Result<()> {
     let res = client.get_network_info().await?;
     let json = to_string_pretty(&res)?;
     println!("{}", json);
+    Ok(())
+}
+
+async fn get_mempool(client: &FullNodeClient, continuous: bool) -> Result<()> {
+    let mut initial_height = client.get_blockchain_state().await?.peak.height;
+    let mut seen_items = HashSet::new();
+    let mut mempool = MemPool::new(initial_height);
+    let mut start_time = Instant::now();
+    loop {
+        let current_height = client.get_blockchain_state().await?.peak.height;
+
+        if current_height != initial_height {
+            mempool.duration = format!("{:.2}", start_time.elapsed().as_secs_f64());
+            println!("{}", to_string_pretty(&mempool)?);
+            initial_height = current_height;
+            seen_items.clear();
+            mempool = MemPool::new(initial_height);
+            start_time = Instant::now();
+            if !continuous {
+                break;
+            }
+        }
+
+        let items = client.get_all_mempool_items().await?;
+
+        for (key, item) in items.iter() {
+            if seen_items.insert(key.clone()) {
+                mempool.update(item);
+            }
+        }
+
+        thread::sleep(Duration::from_millis(300));
+    }
+
     Ok(())
 }
 
@@ -298,118 +384,39 @@ async fn get_transactions(client: &FullNodeClient, address: String) -> Result<()
     let response = client
         .get_coin_records_by_puzzle_hash(&puzzle_hash, None, None, Some(true))
         .await?;
-
     let mut transactions: Vec<Transaction> = Vec::new();
 
     for record in response {
-        let received_record = client
+        let parent_record = client
             .get_coin_record_by_name(&record.coin.parent_coin_info)
             .await?;
-        let coin = &record.coin.parent_coin_info;
-        let sender = encode_puzzle_hash(&received_record.coin.puzzle_hash, prefix).unwrap();
-        let recipient = encode_puzzle_hash(&record.coin.puzzle_hash, prefix).unwrap();
-        let direction = Direction::Received;
-        let confirmed_height = record.confirmed_block_index;
-        let spent_height = record.spent_block_index;
         let amount = Amount {
-            xch: record.coin.amount as f64 / 1_000_000_000_000.0,
+            xch: mojo_to_xch(record.coin.amount),
             mojo: record.coin.amount,
         };
-        transactions.push(Transaction {
-            coin: coin.clone(),
-            recipient,
-            sender,
+        let mut transaction = Transaction {
+            coin: record.coin.parent_coin_info,
+            recipient: address.clone(),
+            sender: encode_puzzle_hash(&parent_record.coin.puzzle_hash, prefix)?,
             amount: amount.clone(),
-            confirmed_height,
-            spent_height,
-            direction,
+            confirmed_height: record.confirmed_block_index,
+            spent_height: record.spent_block_index,
+            direction: Direction::Sent,
             timestamp: record.timestamp,
-        });
-
-        if received_record.spent {
-            let spent_record = client
-                .get_coin_record_by_name(&record.coin.parent_coin_info)
-                .await?;
-            let recipient = encode_puzzle_hash(&spent_record.coin.puzzle_hash, prefix).unwrap();
-            let sender = address.clone(); //encode_puzzle_hash(&address, prefix).unwrap();
-            let direction = Direction::Sent;
-            let confirmed_height = spent_record.confirmed_block_index;
-            let spent_height = spent_record.spent_block_index;
-
-            let amount = Amount {
-                xch: spent_record.coin.amount as f64 / 1_000_000_000_000.0,
-                mojo: spent_record.coin.amount,
-            };
-            transactions.push(Transaction {
-                coin: coin.clone(),
-                sender,
-                recipient,
-                amount: amount.clone(),
-                confirmed_height,
-                spent_height,
-                direction,
-                timestamp: spent_record.timestamp,
-            });
-        }
-    }
-
-    let json = to_string_pretty(&sort_by_date(transactions))?;
-    println!("{}", json);
-    Ok(())
-}
-/*
-async fn get_transactions(client: &FullNodeClient, address: String) -> Result<()> {
-    let puzzle_hash = decode_puzzle_hash(&address)?;
-    let prefix = "xch";
-    let response = client
-        .get_coin_records_by_puzzle_hash(&puzzle_hash, None, None, Some(true))
-        .await?;
-
-    let mut transactions: Vec<Transaction> = Vec::new();
-
-    for record in response {
-        let spent_record = client
-            .get_coin_record_by_name(&record.coin.parent_coin_info)
-            .await?;
-        let from = encode_puzzle_hash(&spent_record.coin.puzzle_hash, prefix).unwrap();
-        let to = encode_puzzle_hash(&record.coin.puzzle_hash, prefix).unwrap();
-        let direction = if spent_record.spent {
-            Direction::Received
+        };
+        if parent_record.coin.puzzle_hash == puzzle_hash {
+            transaction.direction = Direction::Sent;
         } else {
-            Direction::Sent
-        };
-
-        let amount = Amount {
-            xch: record.coin.amount as f64 / 1_000_000_000_000.0,
-            mojo: record.coin.amount,
-        };
-        transactions.push(Transaction {
-            to,
-            from,
-            amount: amount.clone(),
-            direction,
-            timestamp: record.timestamp,
-        });
+            transaction.direction = Direction::Received;
+        }
+        transactions.push(transaction);
     }
 
     let json = to_string_pretty(&sort_by_date(transactions))?;
     println!("{}", json);
     Ok(())
 }
-*/
-fn extract_puzzle_hash_and_encode(solution: String) -> String {
-    let re = Regex::new(r"0x[0-9a-fA-F]+").unwrap();
-    let puzzle_hashes: Vec<String> = re
-        .find_iter(&solution)
-        .map(|m| m.as_str().to_owned())
-        .collect();
 
-    for hash in puzzle_hashes.clone() {
-        let encoded_hash = encode_puzzle_hash(&hash, "xch").unwrap_or("error".to_string());
-        println!("found wallet: {encoded_hash}");
-    }
-    String::from("testing")
-}
 fn sort_by_date(mut coin_records: Vec<Transaction>) -> Vec<Transaction> {
     coin_records.sort_by(|a, b| match (a.timestamp, b.timestamp) {
         (Some(a_date), Some(b_date)) => a_date.cmp(&b_date),
@@ -418,23 +425,4 @@ fn sort_by_date(mut coin_records: Vec<Transaction>) -> Vec<Transaction> {
         (None, None) => Ordering::Equal,
     });
     coin_records
-}
-
-async fn get_spends_by_height(client: &FullNodeClient, height: u64, address: &str) -> Result<()> {
-    let coin_spends = client.get_block_spends_by_height(height).await?;
-    for spend in coin_spends.iter() {
-        let assembled = &spend.puzzle_reveal;
-        let disassembled_solution = chia_node::util::disassemble_program(assembled).unwrap();
-        if disassembled_solution.contains(address) {
-            println!("Found wallet {address}");
-        }
-        /*
-        let re = Regex::new(r"0x[0-9a-fA-F]+").unwrap();
-        let hex_value = re
-            .captures(&disassembled_solution)
-            .and_then(|caps| caps.get(1).map(|m| m.as_str()))
-            .unwrap_or_default();
-            */
-    }
-    Ok(())
 }

@@ -138,6 +138,7 @@ impl Client {
             None => Err(anyhow!("{:#?}", res.error)),
         }
     }
+
     pub async fn get_all_mempool_items(&self) -> Result<HashMap<String, MemPoolItem>> {
         let res: MemPoolItemsResponse = self
             .cmd("get_all_mempool_items", None)

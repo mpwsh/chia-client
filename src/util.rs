@@ -7,7 +7,7 @@ use hex::ToHex;
 use reqwest::Identity;
 use tokio::fs::read;
 
-#[cfg(feature = "disassemble")]
+#[cfg(any(feature = "assemble", feature = "disassemble"))]
 use pyo3::{prelude::*, types::IntoPyDict};
 
 pub(crate) async fn load_pem_pair(
@@ -41,25 +41,49 @@ pub fn mojo_to_xch(amount: u64) -> f64 {
     amount as f64 / 1_000_000_000_000.0
 }
 
-#[cfg(feature = "disassemble")]
-pub fn disassemble_program(program: &str) -> PyResult<String> {
+#[cfg(feature = "assemble")]
+pub fn disassemble(program: &str) -> PyResult<String> {
     pyo3::prepare_freethreaded_python();
-    let gil = Python::acquire_gil();
-    let py = gil.python();
-
-    let locals = [("program", program)].into_py_dict(py);
-    py.run(
-        "
+    Python::with_gil(|py| {
+        let locals = [("program", program)].into_py_dict(py);
+        py.run(
+            "
 from clvm_tools.binutils import disassemble
 from cdv.cmds.util import parse_program
 
 parsed_program = parse_program(program)
 disassembled_program = disassemble(parsed_program)
 ",
-        None,
-        Some(locals),
-    )?;
-    let disassembled_program: String =
-        locals.get_item("disassembled_program").unwrap().extract()?;
-    Ok(disassembled_program)
+            None,
+            Some(locals),
+        )?;
+        let disassembled_program: String =
+            locals.get_item("disassembled_program").unwrap().extract()?;
+        Ok(disassembled_program)
+    })
+}
+
+#[cfg(feature = "curry")]
+pub fn uncurry(program: &str) -> PyResult<(String, Vec<String>)> {
+    pyo3::prepare_freethreaded_python();
+    Python::with_gil(|py| {
+        let locals = [("program", program)].into_py_dict(py);
+        py.run(
+            "
+from cdv.cmds.util import parse_program
+from clvm_tools.curry import curry, uncurry
+
+parsed_program = parse_program(program)
+uncurried_program, curried_args = uncurry(parsed_program)
+uncurried_string = str(uncurried_program)
+curried_args_strings = [str(arg) for arg in curried_args.as_iter()]
+",
+            None,
+            Some(locals),
+        )?;
+        let uncurried: String = locals.get_item("uncurried_string").unwrap().extract()?;
+        let curried_args: Vec<String> =
+            locals.get_item("curried_args_strings").unwrap().extract()?;
+        Ok((uncurried, curried_args))
+    })
 }
