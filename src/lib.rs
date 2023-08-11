@@ -5,6 +5,7 @@ pub use error::Error;
 pub mod datalayer;
 pub mod fullnode;
 pub mod harvester;
+<<<<<<< HEAD
 pub mod models;
 pub mod prelude;
 pub mod util;
@@ -124,3 +125,13 @@ impl Client {
         format!("https://{}/{}", &self.addr.to_string(), &command)
     }
 }
+||||||| parent of a2d8e39 (introduce datalayer api, migrate models and rename crate to chia-client)
+pub mod wallet;
+
+pub mod util;
+=======
+pub mod models;
+pub mod prelude;
+pub mod util;
+pub mod wallet;
+>>>>>>> a2d8e39 (introduce datalayer api, migrate models and rename crate to chia-client)

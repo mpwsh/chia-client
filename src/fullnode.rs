@@ -1,7 +1,36 @@
+<<<<<<< HEAD
 use crate::prelude::*;
 
 pub struct Rpc {
     pub client: Client,
+||||||| parent of a2d8e39 (introduce datalayer api, migrate models and rename crate to chia-client)
+use anyhow::{anyhow, Result};
+use reqwest::ClientBuilder;
+use reqwest::Response;
+use serde_json::{json, Value};
+use std::collections::HashMap;
+use std::path::Path;
+
+use crate::util::load_pem_pair;
+use crate::Error;
+
+use chia_models::common::*;
+pub use chia_models::fullnode::*;
+use std::net::SocketAddr;
+use std::path::PathBuf;
+
+pub struct Config {
+    pub addr: SocketAddr,
+    pub key_path: PathBuf,
+    pub cert_path: PathBuf,
+=======
+use crate::prelude::*;
+
+pub struct Config {
+    pub addr: SocketAddr,
+    pub key_path: PathBuf,
+    pub cert_path: PathBuf,
+>>>>>>> a2d8e39 (introduce datalayer api, migrate models and rename crate to chia-client)
 }
 impl Rpc {
     pub fn init(client: Client) -> Self {
@@ -525,8 +554,16 @@ impl Rpc {
         }
     }
 
+<<<<<<< HEAD
     pub async fn get_healthz(&self) -> Result<bool, Error> {
         let res: HealthzResponse = self.client.cmd("healthz", None).await?.json().await?;
+||||||| parent of a2d8e39 (introduce datalayer api, migrate models and rename crate to chia-client)
+    pub async fn get_healthz(&self) -> Result<String, Error> {
+        let res: HealthzResponse = self.cmd("healthz", None).await?.json().await?;
+=======
+    pub async fn get_healthz(&self) -> Result<bool, Error> {
+        let res: HealthzResponse = self.cmd("healthz", None).await?.json().await?;
+>>>>>>> a2d8e39 (introduce datalayer api, migrate models and rename crate to chia-client)
         Ok(res.success)
     }
 }
