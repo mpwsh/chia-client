@@ -1,13 +1,4 @@
-use std::path::Path;
-
-use reqwest::ClientBuilder;
-use reqwest::Response;
-
-use crate::util::load_pem_pair;
-use crate::Error;
-
-use chia_models::harvester::GetPlotsResponse;
-pub use chia_models::harvester::Plots;
+use crate::prelude::*;
 
 pub struct Client {
     host: String,
@@ -36,19 +27,43 @@ impl Client {
     }
 
     pub async fn get_plots(&self) -> Result<Plots, Error> {
-        let response = self.cmd("get_plots").await?;
+        let response = self.cmd("get_plots", None).await?;
         let response: GetPlotsResponse = response.json().await?;
         Ok(response.into())
     }
 
-    async fn cmd(&self, command: &str) -> Result<Response, reqwest::Error> {
+    pub async fn get_routes(&self) -> Result<Vec<String>> {
+        let res: RoutesResponse = self.cmd("get_routes", None).await?.json().await?;
+        match res.routes {
+            Some(r) => Ok(r),
+            None => Err(anyhow!("{:#?}", res.error)),
+        }
+    }
+
+    pub async fn cmd(
+        &self,
+        command: &str,
+        json: Option<String>,
+    ) -> Result<Response, reqwest::Error> {
         let url = self.make_url(command);
-        self.http
-            .post(&url)
-            .header("Content-Type", "application/json")
-            .body("{}")
-            .send()
-            .await
+        match json {
+            Some(json) => {
+                self.http
+                    .post(&url)
+                    .header("Content-Type", "application/json")
+                    .body(json)
+                    .send()
+                    .await
+            }
+            None => {
+                self.http
+                    .post(&url)
+                    .header("Content-Type", "application/json")
+                    .body("{}")
+                    .send()
+                    .await
+            }
+        }
     }
 
     fn make_url(&self, command: &str) -> String {

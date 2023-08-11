@@ -1,15 +1,4 @@
-use std::path::Path;
-//use std::collections::HashMap;
-use anyhow::{anyhow, Result};
-use reqwest::ClientBuilder;
-use reqwest::Response;
-use serde_json::json;
-
-use crate::util::load_pem_pair;
-use crate::Error;
-use chia_models::common::*;
-
-pub use chia_models::wallet::*;
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct Client {
@@ -69,7 +58,7 @@ impl Client {
             .await?)
     }
 
-    pub async fn get_healthz(&self) -> Result<String, Error> {
+    pub async fn get_healthz(&self) -> Result<bool, Error> {
         let res: HealthzResponse = self.cmd("healthz", None).await?.json().await?;
         Ok(res.success)
     }

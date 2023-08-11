@@ -1,6 +1,6 @@
 use anyhow::Result;
-use chia_node::fullnode::Client as FullNodeClient;
-use chia_node::fullnode::ConfigBuilder as FullNodeConfigBuilder;
+use chia_node::fullnode::Client;
+use chia_node::fullnode::ConfigBuilder;
 use chia_node::util::{decode_puzzle_hash, mojo_to_xch};
 use std::net::{Ipv4Addr, SocketAddr};
 use std::path::Path;
@@ -14,14 +14,14 @@ async fn main() -> Result<()> {
     let key_path = Path::new("~/.chia/mainnet/config/ssl/full_node/private_full_node.key");
     let cert_path = Path::new("~/.chia/mainnet/config/ssl/full_node/private_full_node.crt");
 
-    let config = FullNodeConfigBuilder::new()
+    let config = ConfigBuilder::new()
         .addr(addr)
         .key_path(key_path)
         .cert_path(cert_path)
         .build()
-        .expect("Failed to create FullNodeConfig");
+        .expect("Failed to create Config");
 
-    let client = FullNodeClient::new(config).await?;
+    let client = Client::new(config).await?;
     let address = "xch10n6l66hhx3qrx2ttdvaj54mmy2u63jvhzalj5t6d89npsl4psmvqtsq8fz";
     //Insert your wallet address
     let puzzle_hash = decode_puzzle_hash(address)?;

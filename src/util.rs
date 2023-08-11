@@ -3,14 +3,19 @@ use std::path::Path;
 use crate::Error;
 use anyhow::Result;
 use bech32::{self, convert_bits, u5, Variant};
+use chrono::DateTime;
+use chrono::NaiveDateTime;
+use chrono::Utc;
 use hex::ToHex;
 use reqwest::Identity;
+use serde::de::Deserialize;
+use serde::de::Deserializer;
 use tokio::fs::read;
 
 #[cfg(any(feature = "assemble", feature = "disassemble"))]
 use pyo3::{prelude::*, types::IntoPyDict};
 
-pub(crate) async fn load_pem_pair(
+pub async fn load_pem_pair(
     key: impl AsRef<Path>,
     cert: impl AsRef<Path>,
 ) -> Result<Identity, Error> {
@@ -41,6 +46,21 @@ pub fn mojo_to_xch(amount: u64) -> f64 {
     amount as f64 / 1_000_000_000_000.0
 }
 
+pub fn xch_to_mojo(amount: f64) -> u64 {
+    (amount * 1_000_000_000_000.0) as u64
+}
+
+pub(crate) fn deserialize_optional_timestamp<'de, D: Deserializer<'de>>(
+    d: D,
+) -> Result<Option<DateTime<Utc>>, D::Error> {
+    match Option::<i64>::deserialize(d)? {
+        Some(ts) => Ok(Some(DateTime::<Utc>::from_utc(
+            NaiveDateTime::from_timestamp_opt(ts, 0).unwrap(),
+            Utc,
+        ))),
+        None => Ok(None),
+    }
+}
 #[cfg(feature = "assemble")]
 pub fn disassemble(program: &str) -> PyResult<String> {
     pyo3::prepare_freethreaded_python();

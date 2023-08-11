@@ -1,17 +1,4 @@
-use anyhow::{anyhow, Result};
-use reqwest::ClientBuilder;
-use reqwest::Response;
-use serde_json::{json, Value};
-use std::collections::HashMap;
-use std::path::Path;
-
-use crate::util::load_pem_pair;
-use crate::Error;
-
-use chia_models::common::*;
-pub use chia_models::fullnode::*;
-use std::net::SocketAddr;
-use std::path::PathBuf;
+use crate::prelude::*;
 
 pub struct Config {
     pub addr: SocketAddr,
@@ -576,7 +563,7 @@ impl Client {
         }
     }
 
-    pub async fn get_healthz(&self) -> Result<String, Error> {
+    pub async fn get_healthz(&self) -> Result<bool, Error> {
         let res: HealthzResponse = self.cmd("healthz", None).await?.json().await?;
         Ok(res.success)
     }
