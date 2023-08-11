@@ -1,14 +1,14 @@
 ## Description
 
-chia-node-rs is a simple Rust library to interact with the Chia RPC API (fullnode/wallet/harvester). Currently, most of the RPC endpoints are available and some utility functions to encode and decode puzzle hashes.
+`chia-client` is a simple Rust library to interact with the Chia RPC API (fullnode/wallet/harvester). Currently, most of the RPC endpoints are available and some utility functions to encode and decode puzzle hashes.
 
 ## Installation
 
-To use chia-node-rs in your Rust project, add the following to your Cargo.toml:
+To use `chia-client` in your Rust project, add the following to your Cargo.toml:
 
 ```toml
 [dependencies]
-chia-node-rs = { git = "https://github.com/mpwsh/chia-node-rs" }
+chia-client = { git = "https://github.com/mpwsh/chia-client" }
 ```
 
 ## Usage
@@ -65,14 +65,14 @@ SUBCOMMANDS:
 
 # Contributing
 
-If you'd like to contribute to the development of `chia-node-rs`, feel free to submit a pull request or create an issue on the GitHub repository.
+If you'd like to contribute to the development of `chia-client`, feel free to submit a pull request or create an issue on the GitHub repository.
 License
 
 > This project is licensed under the MIT License. See the LICENSE file for more information.
 
 # Credits
 
-This is a fork of crate `chia-node-rs` from Mike Cronce: https://gitlab.cronce.io/foss/chia-node-rs
+This is a fork of crate `chia-node-rs` from Mike Cronce: https://gitlab.cronce.io/foss/`chia-client`
 
 # Disclaimer
 
