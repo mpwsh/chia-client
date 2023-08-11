@@ -1,10 +1,9 @@
+use super::fullnode::{Coin, SpendBundle};
 use crate::util::deserialize_optional_timestamp;
 use chrono::DateTime;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-//use std::collections::HashMap;
-use super::fullnode::{Coin, SpendBundle};
-// add_mirror - add_missing_files - cancel_offer
+
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct BasicResponse {
     pub success: bool,
