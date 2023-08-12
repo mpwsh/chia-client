@@ -1,105 +1,27 @@
-use anyhow::{anyhow, Result};
-use reqwest::ClientBuilder;
-use reqwest::Response;
-use serde_json::{json, Value};
-use std::collections::HashMap;
-use std::path::Path;
+use crate::prelude::*;
 
-use crate::util::load_pem_pair;
-use crate::Error;
-
-use chia_models::common::*;
-pub use chia_models::fullnode::*;
-use std::net::SocketAddr;
-use std::path::PathBuf;
-
-pub struct Config {
-    pub addr: SocketAddr,
-    pub key_path: PathBuf,
-    pub cert_path: PathBuf,
+pub struct Rpc {
+    pub client: Client,
 }
-
-impl Config {
-    pub fn new(addr: SocketAddr, key_path: &Path, cert_path: &Path) -> Self {
-        Self {
-            addr,
-            key_path: key_path.to_path_buf(),
-            cert_path: cert_path.to_path_buf(),
-        }
-    }
-}
-pub struct ConfigBuilder {
-    addr: Option<SocketAddr>,
-    key_path: Option<PathBuf>,
-    cert_path: Option<PathBuf>,
-}
-impl Default for ConfigBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-impl ConfigBuilder {
-    pub fn new() -> Self {
-        Self {
-            addr: None,
-            key_path: None,
-            cert_path: None,
-        }
-    }
-
-    pub fn addr(mut self, addr: SocketAddr) -> Self {
-        self.addr = Some(addr);
-        self
-    }
-
-    pub fn key_path<P: Into<PathBuf>>(mut self, key_path: P) -> Self {
-        self.key_path = Some(key_path.into());
-        self
-    }
-
-    pub fn cert_path<P: Into<PathBuf>>(mut self, cert_path: P) -> Self {
-        self.cert_path = Some(cert_path.into());
-        self
-    }
-
-    pub fn build(self) -> Result<Config, &'static str> {
-        let addr = self.addr.ok_or("Address is required")?;
-        let key_path = self.key_path.ok_or("Key path is required")?;
-        let cert_path = self.cert_path.ok_or("Cert path is required")?;
-
-        Ok(Config {
-            addr,
-            key_path,
-            cert_path,
-        })
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Client {
-    addr: SocketAddr,
-    http: reqwest::Client,
-}
-
-impl Client {
-    pub async fn new(config: Config) -> Result<Self, Error> {
-        let identity = load_pem_pair(config.key_path, config.cert_path).await?;
-        let http = ClientBuilder::new()
-            .danger_accept_invalid_certs(true)
-            //.danger_accept_invalid_hostnames(true)
-            .identity(identity)
-            .build()?;
-        Ok(Self {
-            addr: config.addr,
-            http,
-        })
+impl Rpc {
+    pub fn init(client: Client) -> Self {
+        Self { client }
     }
     pub async fn get_network_info(&self) -> Result<NetworkInfoResponse> {
-        Ok(self.cmd("get_network_info", None).await?.json().await?)
+        Ok(self
+            .client
+            .cmd("get_network_info", None)
+            .await?
+            .json()
+            .await?)
     }
     pub async fn get_blockchain_state(&self) -> Result<BlockchainState> {
-        let res: BlockchainStateResponse =
-            self.cmd("get_blockchain_state", None).await?.json().await?;
+        let res: BlockchainStateResponse = self
+            .client
+            .cmd("get_blockchain_state", None)
+            .await?
+            .json()
+            .await?;
         match res.blockchain_state {
             Some(r) => Ok(r),
             None => Err(anyhow!("{:#?}", res.error)),
@@ -107,6 +29,7 @@ impl Client {
     }
     pub async fn get_block_count_metrics(&self) -> Result<BlockCountMetrics> {
         let res: BlockCountMetricsResponse = self
+            .client
             .cmd("get_block_count_metrics", None)
             .await?
             .json()
@@ -118,6 +41,7 @@ impl Client {
     }
     pub async fn get_unfinished_block_headers(&self) -> Result<Vec<BlockHeader>> {
         let res: BlockHeadersResponse = self
+            .client
             .cmd("get_unfinished_block_headers", None)
             .await?
             .json()
@@ -129,6 +53,7 @@ impl Client {
     }
     pub async fn get_all_mempool_tx_ids(&self) -> Result<Vec<String>> {
         let res: MemPoolTxIdsRespose = self
+            .client
             .cmd("get_all_mempool_tx_ids", None)
             .await?
             .json()
@@ -141,6 +66,7 @@ impl Client {
 
     pub async fn get_all_mempool_items(&self) -> Result<HashMap<String, MemPoolItem>> {
         let res: MemPoolItemsResponse = self
+            .client
             .cmd("get_all_mempool_items", None)
             .await?
             .json()
@@ -151,7 +77,7 @@ impl Client {
         }
     }
     pub async fn get_routes(&self) -> Result<Vec<String>> {
-        let res: RoutesResponse = self.cmd("get_routes", None).await?.json().await?;
+        let res: RoutesResponse = self.client.cmd("get_routes", None).await?.json().await?;
         match res.routes {
             Some(r) => Ok(r),
             None => Err(anyhow!("{:#?}", res.error)),
@@ -162,6 +88,7 @@ impl Client {
         "header_hash": header_hash,
         });
         let res: BlockResponse = self
+            .client
             .cmd("get_block", Some(json.to_string()))
             .await?
             .json()
@@ -176,6 +103,7 @@ impl Client {
         "height": height,
         });
         let res: BlockRecordResponse = self
+            .client
             .cmd("get_block_record_by_height", Some(json.to_string()))
             .await?
             .json()
@@ -186,6 +114,7 @@ impl Client {
                 "header_hash": r.header_hash,
                 });
                 let res: BlockResponse = self
+                    .client
                     .cmd("get_block", Some(json.to_string()))
                     .await?
                     .json()
@@ -206,6 +135,7 @@ impl Client {
         "height": height,
         });
         let res: BlockRecordResponse = self
+            .client
             .cmd("get_block_record_by_height", Some(json.to_string()))
             .await?
             .json()
@@ -216,6 +146,7 @@ impl Client {
                 "header_hash": r.header_hash,
                 });
                 let res: BlockSpendsResponse = self
+                    .client
                     .cmd("get_block_spends", Some(json.to_string()))
                     .await?
                     .json()
@@ -241,6 +172,7 @@ impl Client {
           "exclude_header_hash": exclude_header_hash,
         });
         let res: BlocksResponse = self
+            .client
             .cmd("get_blocks", Some(json.to_string()))
             .await?
             .json()
@@ -255,6 +187,7 @@ impl Client {
         "header_hash": header_hash,
         });
         let res: BlockRecordResponse = self
+            .client
             .cmd("get_block_record", Some(json.to_string()))
             .await?
             .json()
@@ -269,6 +202,7 @@ impl Client {
         "height": height,
         });
         let res: BlockRecordResponse = self
+            .client
             .cmd("get_block_record_by_height", Some(json.to_string()))
             .await?
             .json()
@@ -286,6 +220,7 @@ impl Client {
           "end": end,
         });
         let res: BlockRecordsResponse = self
+            .client
             .cmd("get_block_records", Some(json.to_string()))
             .await?
             .json()
@@ -306,6 +241,7 @@ impl Client {
           "newer_block_header_hash": newer_block_header_hash,
         });
         let res: NetworkSpaceResponse = self
+            .client
             .cmd("get_network_space", Some(json.to_string()))
             .await?
             .json()
@@ -321,6 +257,7 @@ impl Client {
         "header_hash": header_hash,
         });
         let res: StateTransitionsResponse = self
+            .client
             .cmd("get_additions_and_removals", Some(json.to_string()))
             .await?
             .json()
@@ -335,6 +272,7 @@ impl Client {
         "header_hash": header_hash,
         });
         let res: StateTransitionsResponse = self
+            .client
             .cmd("get_additions_and_removals", Some(json.to_string()))
             .await?
             .json()
@@ -350,6 +288,7 @@ impl Client {
         "header_hash": header_hash,
         });
         let res: StateTransitionsResponse = self
+            .client
             .cmd("get_additions_and_removals", Some(json.to_string()))
             .await?
             .json()
@@ -370,6 +309,7 @@ impl Client {
         "header_hash": header_hash,
         });
         let res: StateTransitionsResponse = self
+            .client
             .cmd("get_additions_and_removals", Some(json.to_string()))
             .await?
             .json()
@@ -390,6 +330,7 @@ impl Client {
         "name": name,
         });
         let res: CoinRecordResponse = self
+            .client
             .cmd("get_coin_record_by_name", Some(json.to_string()))
             .await?
             .json()
@@ -413,6 +354,7 @@ impl Client {
         "include_spent_coins": include_spent_coins,
         });
         let res: CoinRecordsResponse = self
+            .client
             .cmd("get_coin_records_by_names", Some(json.to_string()))
             .await?
             .json()
@@ -436,6 +378,7 @@ impl Client {
         "include_spent_coins": include_spent_coins,
         });
         let res: CoinRecordsResponse = self
+            .client
             .cmd("get_coin_records_by_parent_ids", Some(json.to_string()))
             .await?
             .json()
@@ -459,6 +402,7 @@ impl Client {
         "include_spent_coins": include_spent_coins,
         });
         let res: CoinRecordsResponse = self
+            .client
             .cmd("get_coin_records_by_hint", Some(json.to_string()))
             .await?
             .json()
@@ -478,6 +422,7 @@ impl Client {
         "height": height,
         });
         let res: CoinSolutionResponse = self
+            .client
             .cmd("get_puzzle_and_solution", Some(json.to_string()))
             .await?
             .json()
@@ -500,6 +445,7 @@ impl Client {
             json!({ "challenge_hash": challenge_hash.unwrap()})
         };
         let res: SignagePointOrEos = self
+            .client
             .cmd("get_recent_signage_point_or_eos", Some(json.to_string()))
             .await?
             .json()
@@ -528,6 +474,7 @@ impl Client {
             json["include_spent_coins"] = Value::from(include_spent_coins);
         }
         let res: CoinRecordsResponse = self
+            .client
             .cmd("get_coin_records_by_puzzle_hash", Some(json.to_string()))
             .await?
             .json()
@@ -552,6 +499,7 @@ impl Client {
         "include_spent_coins": include_spent_coins,
         });
         let res: CoinRecordsResponse = self
+            .client
             .cmd("get_coin_records_by_puzzle_hashes", Some(json.to_string()))
             .await?
             .json()
@@ -566,6 +514,7 @@ impl Client {
         "tx_id": tx_id,
         });
         let res: MemPoolItemResponse = self
+            .client
             .cmd("get_mempool_item_by_tx_id", Some(json.to_string()))
             .await?
             .json()
@@ -576,38 +525,8 @@ impl Client {
         }
     }
 
-    pub async fn get_healthz(&self) -> Result<String, Error> {
-        let res: HealthzResponse = self.cmd("healthz", None).await?.json().await?;
+    pub async fn get_healthz(&self) -> Result<bool, Error> {
+        let res: HealthzResponse = self.client.cmd("healthz", None).await?.json().await?;
         Ok(res.success)
-    }
-
-    pub async fn cmd(
-        &self,
-        command: &str,
-        json: Option<String>,
-    ) -> Result<Response, reqwest::Error> {
-        let url = self.make_url(command);
-        match json {
-            Some(json) => {
-                self.http
-                    .post(&url)
-                    .header("Content-Type", "application/json")
-                    .body(json)
-                    .send()
-                    .await
-            }
-            None => {
-                self.http
-                    .post(&url)
-                    .header("Content-Type", "application/json")
-                    .body("{}")
-                    .send()
-                    .await
-            }
-        }
-    }
-
-    fn make_url(&self, command: &str) -> String {
-        format!("https://{}/{}", &self.addr.to_string(), &command)
     }
 }
