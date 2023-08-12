@@ -18,7 +18,6 @@ async fn main() -> Result<()> {
         .key_path(key_path)
         .cert_path(cert_path)
         .build()
-        .daemon(Farmer)
         .await?;
 
     let node = fullnode::Rpc::init(client);
