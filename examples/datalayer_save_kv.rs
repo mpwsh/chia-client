@@ -59,7 +59,7 @@ async fn main() -> Result<()> {
 ||||||| parent of a2d8e39 (introduce datalayer api, migrate models and rename crate to chia-client)
 =======
 use anyhow::{anyhow, Result};
-use chia_node::{
+use chia_client::{
     datalayer::{Client, ConfigBuilder},
     util::xch_to_mojo,
 };
