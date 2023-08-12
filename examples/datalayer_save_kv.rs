@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use chia_node::{
+use chia_client::{
     datalayer::{Client, ConfigBuilder},
     util::xch_to_mojo,
 };

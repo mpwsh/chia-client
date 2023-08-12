@@ -1,85 +1,11 @@
 use crate::prelude::*;
 
-pub struct Config {
-    pub addr: SocketAddr,
-    pub key_path: PathBuf,
-    pub cert_path: PathBuf,
+pub struct Rpc {
+    pub client: Client,
 }
-
-impl Config {
-    pub fn new(addr: SocketAddr, key_path: &Path, cert_path: &Path) -> Self {
-        Self {
-            addr,
-            key_path: key_path.to_path_buf(),
-            cert_path: cert_path.to_path_buf(),
-        }
-    }
-}
-pub struct ConfigBuilder {
-    addr: Option<SocketAddr>,
-    key_path: Option<PathBuf>,
-    cert_path: Option<PathBuf>,
-}
-impl Default for ConfigBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-impl ConfigBuilder {
-    pub fn new() -> Self {
-        Self {
-            addr: None,
-            key_path: None,
-            cert_path: None,
-        }
-    }
-
-    pub fn addr(mut self, addr: SocketAddr) -> Self {
-        self.addr = Some(addr);
-        self
-    }
-
-    pub fn key_path<P: Into<PathBuf>>(mut self, key_path: P) -> Self {
-        self.key_path = Some(key_path.into());
-        self
-    }
-
-    pub fn cert_path<P: Into<PathBuf>>(mut self, cert_path: P) -> Self {
-        self.cert_path = Some(cert_path.into());
-        self
-    }
-
-    pub fn build(self) -> Result<Config, &'static str> {
-        let addr = self.addr.ok_or("Address is required")?;
-        let key_path = self.key_path.ok_or("Key path is required")?;
-        let cert_path = self.cert_path.ok_or("Cert path is required")?;
-
-        Ok(Config {
-            addr,
-            key_path,
-            cert_path,
-        })
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Client {
-    addr: SocketAddr,
-    http: reqwest::Client,
-}
-
-impl Client {
-    pub async fn new(config: Config) -> Result<Self, Error> {
-        let identity = load_pem_pair(config.key_path, config.cert_path).await?;
-        let http = ClientBuilder::new()
-            .danger_accept_invalid_certs(true)
-            //.danger_accept_invalid_hostnames(true)
-            .identity(identity)
-            .build()?;
-        Ok(Self {
-            addr: config.addr,
-            http,
-        })
+impl Rpc {
+    pub fn init(client: Client) -> Self {
+        Self { client }
     }
 
     pub async fn add_mirror(&self, id: &str, urls: Vec<&str>, amount: u64) -> Result<()> {
@@ -89,6 +15,7 @@ impl Client {
             "amount": amount,
         });
         let res: BasicResponse = self
+            .client
             .cmd("add_mirror", Some(json.to_string()))
             .await?
             .json()
@@ -100,7 +27,12 @@ impl Client {
     }
 
     pub async fn add_missing_files(&self) -> Result<()> {
-        let res: BasicResponse = self.cmd("add_missing_files", None).await?.json().await?;
+        let res: BasicResponse = self
+            .client
+            .cmd("add_missing_files", None)
+            .await?
+            .json()
+            .await?;
         match res.error {
             Some(e) => Err(anyhow!("{:#?}", e)),
             None => Ok(()),
@@ -108,7 +40,12 @@ impl Client {
     }
 
     pub async fn get_owned_stores(&self) -> Result<Vec<String>> {
-        let res: StoresResponse = self.cmd("get_owned_stores", None).await?.json().await?;
+        let res: StoresResponse = self
+            .client
+            .cmd("get_owned_stores", None)
+            .await?
+            .json()
+            .await?;
         match res.store_ids {
             Some(r) => Ok(r),
             None => Err(anyhow!("{:#?}", res.error)),
@@ -116,11 +53,21 @@ impl Client {
     }
 
     pub async fn close_connection(&self) -> Result<Vec<String>> {
-        Ok(self.cmd("close_connection", None).await?.json().await?)
+        Ok(self
+            .client
+            .cmd("close_connection", None)
+            .await?
+            .json()
+            .await?)
     }
 
     pub async fn get_connections(&self) -> Result<Vec<Connection>> {
-        let res: ConnectionsResponse = self.cmd("get_connections", None).await?.json().await?;
+        let res: ConnectionsResponse = self
+            .client
+            .cmd("get_connections", None)
+            .await?
+            .json()
+            .await?;
         match res.connections {
             Some(r) => Ok(r),
             None => Err(anyhow!("{:#?}", res.error)),
@@ -133,6 +80,7 @@ impl Client {
             "port": port.to_string(),
         });
         let res: BasicResponse = self
+            .client
             .cmd("batch_update", Some(json.to_string()))
             .await?
             .json()
@@ -144,7 +92,7 @@ impl Client {
     }
 
     pub async fn stop_node(&self) -> Result<()> {
-        let res: BasicResponse = self.cmd("stop_node", None).await?.json().await?;
+        let res: BasicResponse = self.client.cmd("stop_node", None).await?.json().await?;
         match res.error {
             Some(e) => Err(anyhow!("{:#?}", e)),
             None => Ok(()),
@@ -152,7 +100,7 @@ impl Client {
     }
 
     pub async fn get_routes(&self) -> Result<Vec<String>> {
-        let res: RoutesResponse = self.cmd("get_routes", None).await?.json().await?;
+        let res: RoutesResponse = self.client.cmd("get_routes", None).await?.json().await?;
         match res.routes {
             Some(r) => Ok(r),
             None => Err(anyhow!("{:#?}", res.error)),
@@ -165,6 +113,7 @@ impl Client {
             "changelist": changelist,
         });
         let res: UpdateResponse = self
+            .client
             .cmd("batch_update", Some(json.to_string()))
             .await?
             .json()
@@ -182,6 +131,7 @@ impl Client {
             "fee": fee.to_string(),
         });
         let res: BasicResponse = self
+            .client
             .cmd("cancel_offer", Some(json.to_string()))
             .await?
             .json()
@@ -197,6 +147,7 @@ impl Client {
             "fee": fee.to_string(),
         });
         let res: CreateDataStoreResponse = self
+            .client
             .cmd("create_data_store", Some(json.to_string()))
             .await?
             .json()
@@ -214,6 +165,7 @@ impl Client {
             "fee": fee.to_string(),
         });
         let res: UpdateResponse = self
+            .client
             .cmd("delete_key", Some(json.to_string()))
             .await?
             .json()
@@ -229,6 +181,7 @@ impl Client {
             "id": id,
         });
         let res: BasicResponse = self
+            .client
             .cmd("delete_mirror", Some(json.to_string()))
             .await?
             .json()
@@ -243,6 +196,7 @@ impl Client {
             "id": id,
         });
         let res: RootResponse = self
+            .client
             .cmd("get_root", Some(json.to_string()))
             .await?
             .json()
@@ -257,6 +211,7 @@ impl Client {
             "id": id,
         });
         let res: RootHistoryResponse = self
+            .client
             .cmd("get_root", Some(json.to_string()))
             .await?
             .json()
@@ -272,6 +227,7 @@ impl Client {
             "ids": ids,
         });
         let res: RootsResponse = self
+            .client
             .cmd("get_roots", Some(json.to_string()))
             .await?
             .json()
@@ -288,6 +244,7 @@ impl Client {
             "hash": hash,
         });
         let res: AncestorsResponse = self
+            .client
             .cmd("get_ancestors", Some(json.to_string()))
             .await?
             .json()
@@ -304,6 +261,7 @@ impl Client {
             "root_hash": root_hash,
         });
         let res: KeysResponse = self
+            .client
             .cmd("get_keys", Some(json.to_string()))
             .await?
             .json()
@@ -321,6 +279,7 @@ impl Client {
             "hash_2": hash_2,
         });
         let res: KeyValueDiffResponse = self
+            .client
             .cmd("get_kv_diff", Some(json.to_string()))
             .await?
             .json()
@@ -336,6 +295,7 @@ impl Client {
             "id": id,
         });
         let res: LocalRootResponse = self
+            .client
             .cmd("get_local_root", Some(json.to_string()))
             .await?
             .json()
@@ -351,6 +311,7 @@ impl Client {
             "id": id,
         });
         let res: MirrorsResponse = self
+            .client
             .cmd("get_mirrors", Some(json.to_string()))
             .await?
             .json()
@@ -366,6 +327,7 @@ impl Client {
             "id": id,
         });
         let res: SyncStatusResponse = self
+            .client
             .cmd("get_sync_status", Some(json.to_string()))
             .await?
             .json()
@@ -386,6 +348,7 @@ impl Client {
             "root_hash": root_hash.unwrap_or(""),
         });
         let res: KeysValuesResponse = self
+            .client
             .cmd("get_keys_values", Some(json.to_string()))
             .await?
             .json()
@@ -404,6 +367,7 @@ impl Client {
         });
 
         let res: ValueResponse = self
+            .client
             .cmd("get_value", Some(json.to_string()))
             .await?
             .json()
@@ -421,6 +385,7 @@ impl Client {
         });
 
         let res: UpdateResponse = self
+            .client
             .cmd("insert", Some(json.to_string()))
             .await?
             .json()
@@ -432,6 +397,7 @@ impl Client {
     }
     pub async fn make_offer(&self, offer: Offer) -> Result<Offer> {
         let res: OfferResponse = self
+            .client
             .cmd("make_offer", Some(serde_json::to_string(&offer)?))
             .await?
             .json()
@@ -443,6 +409,7 @@ impl Client {
     }
     pub async fn take_offer(&self, offer: Offer) -> Result<String> {
         let res: TakeOfferResponse = self
+            .client
             .cmd("take_offer", Some(serde_json::to_string(&offer)?))
             .await?
             .json()
@@ -454,6 +421,7 @@ impl Client {
     }
     pub async fn verify_offer(&self, offer: Offer) -> Result<VerifyOfferResponse> {
         Ok(self
+            .client
             .cmd("verify_offer", Some(serde_json::to_string(&offer)?))
             .await?
             .json()
@@ -466,6 +434,7 @@ impl Client {
         });
 
         let res: BasicResponse = self
+            .client
             .cmd("remove_subscriptions", Some(json.to_string()))
             .await?
             .json()
@@ -483,6 +452,7 @@ impl Client {
         });
 
         let res: BasicResponse = self
+            .client
             .cmd("subscribe", Some(json.to_string()))
             .await?
             .json()
@@ -498,6 +468,7 @@ impl Client {
         });
 
         let res: BasicResponse = self
+            .client
             .cmd("subscribe", Some(json.to_string()))
             .await?
             .json()
@@ -508,40 +479,10 @@ impl Client {
         }
     }
     pub async fn subscriptions(&self) -> Result<Vec<String>> {
-        let res: StoresResponse = self.cmd("subscriptions", None).await?.json().await?;
+        let res: StoresResponse = self.client.cmd("subscriptions", None).await?.json().await?;
         match res.store_ids {
             None => Err(anyhow!("{:#?}", res.error)),
             Some(r) => Ok(r),
         }
-    }
-
-    pub async fn cmd(
-        &self,
-        command: &str,
-        json: Option<String>,
-    ) -> Result<Response, reqwest::Error> {
-        let url = self.make_url(command);
-        match json {
-            Some(json) => {
-                self.http
-                    .post(&url)
-                    .header("Content-Type", "application/json")
-                    .body(json)
-                    .send()
-                    .await
-            }
-            None => {
-                self.http
-                    .post(&url)
-                    .header("Content-Type", "application/json")
-                    .body("{}")
-                    .send()
-                    .await
-            }
-        }
-    }
-
-    fn make_url(&self, command: &str) -> String {
-        format!("https://{}/{}", &self.addr.to_string(), &command)
     }
 }

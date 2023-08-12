@@ -1,7 +1,9 @@
 use anyhow::Result;
-use chia_node::{
-    fullnode::{Client as FullNodeClient, Config as FullNodeConfig, MemPoolItem},
+use chia_client::{
+    fullnode,
+    models::fullnode::MemPoolItem,
     util::{decode_puzzle_hash, encode_puzzle_hash, mojo_to_xch},
+    Client, ClientBuilder,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -10,7 +12,6 @@ use std::{
     cmp::Ordering,
     collections::HashSet,
     fs,
-    net::SocketAddr,
     path::PathBuf,
     thread,
     time::{Duration, Instant},
@@ -178,7 +179,7 @@ pub enum ClvmSubcommand {
     },
 }
 impl Cli {
-    pub async fn load_config(&self) -> Result<FullNodeConfig> {
+    pub async fn load_config(&self) -> Result<Client> {
         // Read the config file and parse it as YAML
         let config_path = if let Some(ref config) = self.global.config {
             config.clone()
@@ -199,11 +200,12 @@ impl Cli {
             .clone()
             .unwrap_or(config_file.cert_path);
 
-        Ok(FullNodeConfig::new(
-            SocketAddr::new(host.parse()?, port),
-            &key_path,
-            &cert_path,
-        ))
+        Ok(ClientBuilder::new()
+            .addr(&host, port)
+            .key_path(key_path)
+            .cert_path(cert_path)
+            .build()
+            .await?)
     }
 }
 
@@ -238,8 +240,7 @@ impl MemPool {
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::from_args();
-    let config = cli.load_config();
-    let client = FullNodeClient::new(config.await?).await?;
+    let client = fullnode::Rpc::init(cli.load_config().await?);
     match cli.cmd {
         Command::Get { subcommand } => match subcommand {
             GetSubcommand::Balance { address } => get_balance(&client, address).await?,
@@ -267,7 +268,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn get_block(client: &FullNodeClient, value: String) -> Result<()> {
+async fn get_block(client: &fullnode::Rpc, value: String) -> Result<()> {
     let response = match value.parse::<u64>() {
         Ok(height) => client.get_block_by_height(height).await,
         Err(_) => client.get_block(&value).await,
@@ -279,7 +280,7 @@ async fn get_block(client: &FullNodeClient, value: String) -> Result<()> {
 }
 
 async fn get_coin(
-    client: &FullNodeClient,
+    client: &fullnode::Rpc,
     value: String,
     show_parent: bool,
     encode: bool,
@@ -314,7 +315,7 @@ async fn get_coin(
     Ok(())
 }
 
-async fn get_balance(client: &FullNodeClient, address: String) -> Result<()> {
+async fn get_balance(client: &fullnode::Rpc, address: String) -> Result<()> {
     let puzzle_hash = decode_puzzle_hash(&address)?;
     let response = client
         .get_coin_records_by_puzzle_hash(&puzzle_hash, None, None, Some(false))
@@ -324,14 +325,14 @@ async fn get_balance(client: &FullNodeClient, address: String) -> Result<()> {
     Ok(())
 }
 
-async fn get_network_info(client: &FullNodeClient) -> Result<()> {
+async fn get_network_info(client: &fullnode::Rpc) -> Result<()> {
     let res = client.get_network_info().await?;
     let json = to_string_pretty(&res)?;
     println!("{}", json);
     Ok(())
 }
 
-async fn get_mempool(client: &FullNodeClient, continuous: bool) -> Result<()> {
+async fn get_mempool(client: &fullnode::Rpc, continuous: bool) -> Result<()> {
     let mut initial_height = client.get_blockchain_state().await?.peak.height;
     let mut seen_items = HashSet::new();
     let mut mempool = MemPool::new(initial_height);
@@ -365,20 +366,20 @@ async fn get_mempool(client: &FullNodeClient, continuous: bool) -> Result<()> {
     Ok(())
 }
 
-async fn get_blockchain_state(client: &FullNodeClient) -> Result<()> {
+async fn get_blockchain_state(client: &fullnode::Rpc) -> Result<()> {
     let res = client.get_blockchain_state().await?;
     let json = to_string_pretty(&res)?;
     println!("{}", json);
     Ok(())
 }
 
-async fn get_block_count_metrics(client: &FullNodeClient) -> Result<()> {
+async fn get_block_count_metrics(client: &fullnode::Rpc) -> Result<()> {
     let res = client.get_block_count_metrics().await?;
     let json = to_string_pretty(&res)?;
     println!("{}", json);
     Ok(())
 }
-async fn get_transactions(client: &FullNodeClient, address: String) -> Result<()> {
+async fn get_transactions(client: &fullnode::Rpc, address: String) -> Result<()> {
     let puzzle_hash = decode_puzzle_hash(&address)?;
     let prefix = "xch";
     let response = client

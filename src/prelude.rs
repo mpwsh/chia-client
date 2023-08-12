@@ -1,7 +1,7 @@
 pub use crate::{
     models::{common::*, datalayer::*, fullnode::*, harvester::*, wallet::*},
     util::load_pem_pair,
-    Error,
+    Client, Error,
 };
 pub use anyhow::{anyhow, Result};
 pub use reqwest::ClientBuilder;
