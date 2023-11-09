@@ -108,7 +108,7 @@ impl Rpc {
         }
     }
 
-    pub async fn batch_update(&self, id: &str, changelist: Vec<ChangeListEntry>) -> Result<String> {
+    pub async fn batch_update(&self, id: &str, changelist: Vec<UpdateResponse>) -> Result<String> {
         let json = json!({
             "id": id,
             "changelist": changelist,
@@ -143,7 +143,7 @@ impl Rpc {
         }
     }
 
-    pub async fn create_data_store(&self, fee: u64) -> Result<Vec<Transaction>> {
+    pub async fn create_data_store(&self, fee: u64) -> Result<CreateDataStoreResponse> {
         let json = json!({
             "fee": fee.to_string(),
         });
@@ -153,9 +153,9 @@ impl Rpc {
             .await?
             .json()
             .await?;
-        match res.txs {
-            Some(r) => Ok(r),
-            None => Err(anyhow!("{:#?}", res.error)),
+        match res.error {
+            Some(e) => Err(anyhow!("{:#?}", e)),
+            None => Ok(res),
         }
     }
 
@@ -213,7 +213,7 @@ impl Rpc {
         });
         let res: RootHistoryResponse = self
             .client
-            .cmd("get_root", Some(json.to_string()))
+            .cmd("get_root_history", Some(json.to_string()))
             .await?
             .json()
             .await?;
@@ -323,9 +323,9 @@ impl Rpc {
         }
     }
 
-    pub async fn get_sync_status(&self, id: &str) -> Result<SyncStatus> {
+    pub async fn get_sync_status(&self, store_id: &str) -> Result<SyncStatus> {
         let json = json!({
-            "id": id,
+            "id": store_id,
         });
         let res: SyncStatusResponse = self
             .client

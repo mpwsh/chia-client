@@ -61,6 +61,21 @@ pub(crate) fn deserialize_optional_timestamp<'de, D: Deserializer<'de>>(
         None => Ok(None),
     }
 }
+
+pub(crate) fn deserialize_empty_vec_to_none<'de, D>(
+    deserializer: D,
+) -> Result<Option<Vec<String>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let vec: Vec<String> = Deserialize::deserialize(deserializer)?;
+    if vec.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(vec))
+    }
+}
+
 #[cfg(feature = "assemble")]
 pub fn disassemble(program: &str) -> PyResult<String> {
     pyo3::prepare_freethreaded_python();

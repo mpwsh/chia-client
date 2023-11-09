@@ -1,8 +1,10 @@
 use super::fullnode::{Coin, SpendBundle};
+use crate::util::deserialize_empty_vec_to_none;
 use crate::util::deserialize_optional_timestamp;
 use chrono::DateTime;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, NoneAsEmptyString};
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct BasicResponse {
@@ -42,19 +44,13 @@ pub struct Maker {
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Inclusion {
-    pub key: String,
-    pub value: String,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Taker {
     pub store_id: String,
-    pub inclusions: Vec<Inclusion2>,
+    pub inclusions: Vec<Inclusion>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Inclusion2 {
+pub struct Inclusion {
     pub key: String,
     pub value: String,
 }
@@ -81,6 +77,7 @@ pub struct KeysValuesResponse {
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct KeysResponse {
+    #[serde(deserialize_with = "deserialize_empty_vec_to_none")]
     pub keys: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
@@ -118,6 +115,7 @@ pub struct Transaction {
     pub confirmed_at_height: i64,
     pub created_at_time: i64,
     pub fee_amount: i64,
+    #[serde(deserialize_with = "deserialize_empty_vec_to_none")]
     pub memos: Option<Vec<String>>,
     pub name: Option<String>,
     pub removals: Vec<Coin>,
@@ -147,8 +145,10 @@ pub struct LocalRootResponse {
     pub error: Option<String>,
 }
 
+#[serde_as]
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TakeOfferResponse {
+    #[serde_as(as = "NoneAsEmptyString")]
     pub trade_id: Option<String>,
     pub success: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -157,6 +157,7 @@ pub struct TakeOfferResponse {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StoresResponse {
+    #[serde(deserialize_with = "deserialize_empty_vec_to_none")]
     pub store_ids: Option<Vec<String>>,
     pub success: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -218,6 +219,7 @@ pub struct RootHistory {
 pub struct AncestorsResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    #[serde(deserialize_with = "deserialize_empty_vec_to_none")]
     pub ancestors: Option<Vec<String>>,
     pub success: bool,
 }
