@@ -123,10 +123,10 @@ impl Rpc {
                     Some(mut b) => {
                         b.header_hash = Some(r.header_hash);
                         Ok(b)
-                    }
+                    },
                     None => Err(anyhow!("{:#?}", res.error)),
                 }
-            }
+            },
             None => Err(anyhow!("{:#?}", res.error)),
         }
     }
@@ -155,7 +155,7 @@ impl Rpc {
                     Some(r) => Ok(r),
                     None => Err(anyhow!("{:#?}", res.error)),
                 }
-            }
+            },
             None => Err(anyhow!("{:#?}", res.error)),
         }
     }
@@ -300,7 +300,7 @@ impl Rpc {
                     removals: res.removals.unwrap_or_default(),
                 };
                 Ok(state_transitions)
-            }
+            },
             Some(e) => Err(anyhow!("{:#?}", e)),
         }
     }
@@ -321,7 +321,7 @@ impl Rpc {
                     removals: res.removals.unwrap_or_default(),
                 };
                 Ok(state_transitions)
-            }
+            },
             Some(e) => Err(anyhow!("{:#?}", e)),
         }
     }

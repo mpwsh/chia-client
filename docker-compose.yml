@@ -1,0 +1,53 @@
+version: "3.6"
+services:
+  chia-node1:
+    container_name: chia-node1
+    restart: unless-stopped
+    image: ghcr.io/chia-network/chia:latest
+    environment:
+      self_hostname: 0.0.0.0
+      log_level: INFO
+      keys: "/root/key"
+      service: "data_layer_http data"
+    ports:
+      - 8570:8575 # DataLayer File propagation
+      - 8560:8562 # DataLayer RPC
+      - 9250:9256 # Wallet RPC
+    networks:
+      - fake_lan
+    volumes:
+      #Keys
+      - ./keys/node1:/root/key
+      #DataLayer DB
+      - ./data/node1/datalayer/db:/root/.chia/mainnet/data_layer/db
+      #Wallet DB
+      - ./data/node1/wallet/db:/root/.chia/mainnet/wallet/db
+      #Config
+      - ./data/node1/config:/root/.chia/mainnet/config
+  chia-node2:
+    container_name: chia-node2
+    restart: unless-stopped
+    image: ghcr.io/chia-network/chia:latest
+    environment:
+      self_hostname: 0.0.0.0
+      keys: "/root/key"
+      log_level: INFO
+      service: "data_layer_http data"
+    ports:
+      - 8571:8575 # DataLayer File propagation
+      - 8561:8562 # DataLayer RPC
+      - 9251:9256 # Wallet RPC
+    networks:
+      - fake_lan
+    volumes:
+      #Keys
+      - ./keys/node2:/root/key
+      #DataLayer DB
+      - ./data/node2/datalayer/db:/root/.chia/mainnet/data_layer/db
+      #Wallet DB
+      - ./data/node2/wallet/db:/root/.chia/mainnet/wallet/db
+      #Config
+      - ./data/node2/config:/root/.chia/mainnet/config
+
+networks:
+  fake_lan:

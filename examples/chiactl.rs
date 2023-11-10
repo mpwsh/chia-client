@@ -1,3 +1,12 @@
+use std::{
+    cmp::Ordering,
+    collections::HashSet,
+    fs,
+    path::PathBuf,
+    thread,
+    time::{Duration, Instant},
+};
+
 use anyhow::Result;
 use chia_client::{
     fullnode,
@@ -8,14 +17,6 @@ use chia_client::{
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::to_string_pretty;
-use std::{
-    cmp::Ordering,
-    collections::HashSet,
-    fs,
-    path::PathBuf,
-    thread,
-    time::{Duration, Instant},
-};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -260,7 +261,7 @@ async fn main() -> Result<()> {
         Command::Clvm { subcommand } => match subcommand {
             ClvmSubcommand::Encode { hash, prefix } => {
                 println!("{}", encode_puzzle_hash(&hash, &prefix)?)
-            }
+            },
             ClvmSubcommand::Decode { address } => println!("{}", decode_puzzle_hash(&address)?),
         },
     }
@@ -379,6 +380,7 @@ async fn get_block_count_metrics(client: &fullnode::Rpc) -> Result<()> {
     println!("{}", json);
     Ok(())
 }
+
 async fn get_transactions(client: &fullnode::Rpc, address: String) -> Result<()> {
     let puzzle_hash = decode_puzzle_hash(&address)?;
     let prefix = "xch";

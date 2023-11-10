@@ -1,19 +1,20 @@
-use std::path::Path;
+use std::{
+    fmt,
+    path::Path,
+    time::{Duration, Instant},
+};
 
-use crate::Error;
 use anyhow::Result;
 use bech32::{self, convert_bits, u5, Variant};
-use chrono::DateTime;
-use chrono::NaiveDateTime;
-use chrono::Utc;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use hex::ToHex;
-use reqwest::Identity;
-use serde::de::Deserialize;
-use serde::de::Deserializer;
-use tokio::fs::read;
-
 #[cfg(any(feature = "assemble", feature = "disassemble"))]
 use pyo3::{prelude::*, types::IntoPyDict};
+use reqwest::Identity;
+use serde::de::{Deserialize, Deserializer};
+use tokio::fs::read;
+
+use crate::Error;
 
 pub async fn load_pem_pair(
     key: impl AsRef<Path>,
@@ -61,6 +62,21 @@ pub(crate) fn deserialize_optional_timestamp<'de, D: Deserializer<'de>>(
         None => Ok(None),
     }
 }
+
+pub(crate) fn deserialize_empty_vec_to_none<'de, D>(
+    deserializer: D,
+) -> Result<Option<Vec<String>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let vec: Vec<String> = Deserialize::deserialize(deserializer)?;
+    if vec.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(vec))
+    }
+}
+
 #[cfg(feature = "assemble")]
 pub fn disassemble(program: &str) -> PyResult<String> {
     pyo3::prepare_freethreaded_python();
@@ -106,4 +122,23 @@ curried_args_strings = [str(arg) for arg in curried_args.as_iter()]
             locals.get_item("curried_args_strings").unwrap().extract()?;
         Ok((uncurried, curried_args))
     })
+}
+
+pub struct Elapsed(Duration);
+impl Elapsed {
+    pub fn from(start: &Instant) -> Self {
+        Elapsed(start.elapsed())
+    }
+}
+
+impl fmt::Display for Elapsed {
+    fn fmt(&self, out: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match (self.0.as_secs(), self.0.subsec_nanos()) {
+            (0, n) if n < 1000 => write!(out, "{} ns", n),
+            (0, n) if n < 1_000_000 => write!(out, "{} µs", n / 1000),
+            (0, n) => write!(out, "{} ms", n / 1_000_000),
+            (s, n) if s < 10 => write!(out, "{}.{:02} s", s, n / 10_000_000),
+            (s, _) => write!(out, "{} s", s),
+        }
+    }
 }

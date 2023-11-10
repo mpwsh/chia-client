@@ -15,6 +15,24 @@ impl Rpc {
             None => Err(anyhow!("{:#?}", res.error)),
         }
     }
+
+    pub async fn get_transaction(&self, tx_id: &str) -> Result<Transaction> {
+        let json = json!({
+        "transaction_id": tx_id,
+        });
+        let res: TransactionResponse = self
+            .client
+            .cmd("get_transaction", Some(json.to_string()))
+            .await?
+            .json()
+            .await?;
+
+        match res.transaction {
+            Some(r) => Ok(r),
+            None => Err(anyhow!("{:#?}", res.error)),
+        }
+    }
+
     pub async fn get_offer_summary(&self, offer: &str) -> Result<OfferSummary> {
         let json = json!({
         "offer": offer,
@@ -30,6 +48,7 @@ impl Rpc {
             None => Err(anyhow!("{:#?}", res.error)),
         }
     }
+
     pub async fn check_offer_validity(&self, offer: &str) -> Result<OfferValidityResponse> {
         let json = json!({
         "offer": offer,

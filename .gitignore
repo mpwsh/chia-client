@@ -3,3 +3,6 @@ Cargo.lock
 /dep
 ctlconfig.yaml
 newconfig.yaml
+/data_layer
+/data
+/keys
