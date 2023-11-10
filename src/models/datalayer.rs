@@ -1,10 +1,9 @@
-use super::fullnode::{Coin, SpendBundle};
-use crate::util::deserialize_empty_vec_to_none;
-use crate::util::deserialize_optional_timestamp;
-use chrono::DateTime;
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, NoneAsEmptyString};
+
+use super::wallet::Transaction;
+use crate::util::{deserialize_empty_vec_to_none, deserialize_optional_timestamp};
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct BasicResponse {
@@ -105,28 +104,6 @@ pub struct CreateDataStoreResponse {
     pub error: Option<String>,
     pub success: bool,
     pub txs: Option<Vec<Transaction>>,
-}
-
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct Transaction {
-    pub additions: Vec<Coin>,
-    pub amount: i64,
-    pub confirmed: bool,
-    pub confirmed_at_height: i64,
-    pub created_at_time: i64,
-    pub fee_amount: i64,
-    #[serde(deserialize_with = "deserialize_empty_vec_to_none")]
-    pub memos: Option<Vec<String>>,
-    pub name: Option<String>,
-    pub removals: Vec<Coin>,
-    pub sent: i64,
-    pub sent_to: Vec<String>,
-    pub spend_bundle: Option<SpendBundle>,
-    pub to_puzzle_hash: String,
-    pub trade_id: Option<String>,
-    #[serde(rename = "type")]
-    pub type_field: i64,
-    pub wallet_id: i64,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]

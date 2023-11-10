@@ -377,11 +377,12 @@ impl Rpc {
             Some(r) => Ok(r),
         }
     }
-    pub async fn insert(&self, store_id: &str, key: &str, value: &str) -> Result<String> {
+    pub async fn insert(&self, store_id: &str, key: &str, value: &str, fee: u64) -> Result<String> {
         let json = json!({
             "id": store_id,
             "key": key,
             "value": value,
+            "fee": fee.to_string(),
         });
 
         let res: UpdateResponse = self

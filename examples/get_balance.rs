@@ -1,10 +1,11 @@
+use std::path::Path;
+
 use anyhow::Result;
 use chia_client::{
     fullnode,
     util::{decode_puzzle_hash, mojo_to_xch},
     ClientBuilder,
 };
-use std::path::Path;
 
 #[tokio::main]
 async fn main() -> Result<()> {

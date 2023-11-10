@@ -4,3 +4,5 @@ Cargo.lock
 ctlconfig.yaml
 newconfig.yaml
 /data_layer
+/data
+/keys

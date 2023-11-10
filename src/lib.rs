@@ -85,7 +85,6 @@ impl Client {
         let identity = load_pem_pair(&config.key_path, &config.cert_path).await?;
         let http = reqwest::ClientBuilder::new()
             .danger_accept_invalid_certs(true)
-            //.danger_accept_invalid_hostnames(true)
             .identity(identity)
             .build()?;
         Ok(Self {
@@ -108,7 +107,7 @@ impl Client {
                     .body(json)
                     .send()
                     .await
-            }
+            },
             None => {
                 self.http
                     .post(&url)
@@ -116,7 +115,7 @@ impl Client {
                     .body("{}")
                     .send()
                     .await
-            }
+            },
         }
     }
 
