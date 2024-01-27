@@ -62,3 +62,25 @@ pub struct Transaction {
     pub type_field: i64,
     pub wallet_id: i64,
 }
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct GetWalletBalanceResponse {
+    pub success: bool,
+    pub wallet_balance: Option<WalletBalance>,
+    pub error: Option<String>,
+    pub traceback: Option<String>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WalletBalance {
+    pub confirmed_wallet_balance: i64,
+    pub fingerprint: i64,
+    pub max_send_amount: i64,
+    pub pending_change: i64,
+    pub pending_coin_removal_count: i64,
+    pub spendable_balance: i64,
+    pub unconfirmed_wallet_balance: i64,
+    pub unspent_coin_count: i64,
+    pub wallet_id: i64,
+    pub wallet_type: i64,
+}

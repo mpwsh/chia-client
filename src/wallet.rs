@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+#[derive(Clone)]
 pub struct Rpc {
     pub client: Client,
 }
@@ -8,6 +9,7 @@ impl Rpc {
     pub fn init(client: Client) -> Self {
         Self { client }
     }
+
     pub async fn get_routes(&self) -> Result<Vec<String>> {
         let res: RoutesResponse = self.client.cmd("get_routes", None).await?.json().await?;
         match res.routes {
@@ -28,6 +30,24 @@ impl Rpc {
             .await?;
 
         match res.transaction {
+            Some(r) => Ok(r),
+            None => Err(anyhow!("{:#?}", res.error)),
+        }
+    }
+
+    pub async fn get_wallet_balance(&self, wallet_id: u64) -> Result<WalletBalance> {
+        let json = json!({
+        "wallet_id": wallet_id,
+        });
+
+        let res: GetWalletBalanceResponse = self
+            .client
+            .cmd("get_wallet_balance", Some(json.to_string()))
+            .await?
+            .json()
+            .await?;
+
+        match res.wallet_balance {
             Some(r) => Ok(r),
             None => Err(anyhow!("{:#?}", res.error)),
         }

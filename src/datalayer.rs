@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+#[derive(Clone)]
 pub struct Rpc {
     pub client: Client,
 }
@@ -8,11 +9,12 @@ impl Rpc {
         Self { client }
     }
 
-    pub async fn add_mirror(&self, id: &str, urls: Vec<&str>, amount: u64) -> Result<()> {
+    pub async fn add_mirror(&self, id: &str, urls: Vec<&str>, amount: u64, fee: u64) -> Result<()> {
         let json = json!({
             "id": id,
             "urls": urls,
             "amount": amount,
+            "fee": fee,
         });
         let res: BasicResponse = self
             .client
@@ -81,7 +83,7 @@ impl Rpc {
         });
         let res: BasicResponse = self
             .client
-            .cmd("batch_update", Some(json.to_string()))
+            .cmd("open_connection", Some(json.to_string()))
             .await?
             .json()
             .await?;
@@ -107,10 +109,16 @@ impl Rpc {
         }
     }
 
-    pub async fn batch_update(&self, id: &str, changelist: Vec<UpdateResponse>) -> Result<String> {
+    pub async fn batch_update(
+        &self,
+        store_id: &str,
+        changelist: Vec<Changelist>,
+        fee: u64,
+    ) -> Result<String> {
         let json = json!({
-            "id": id,
+            "id": store_id,
             "changelist": changelist,
+            "fee": fee.to_string(),
         });
         let res: UpdateResponse = self
             .client
