@@ -58,6 +58,7 @@ async fn main() -> Result<()> {
         name: "Alice".to_string(),
         store_id: "923bf39ca5511fad813680943773d597c3c1e3608e4fcc93d2bff600e0bcf937".to_string(),
         mirror_url: "http://tun.hashlink.ch:9090".to_string(),
+        mirror_url: "http://chia-node1:8575".to_string(),
         clients: Clients {
             wallet: setup_wallet("node1", "127.0.0.1", 9250).await?,
             datalayer: setup_datalayer("node1", "127.0.0.1", 8560).await?,
@@ -72,7 +73,7 @@ async fn main() -> Result<()> {
     let bob = Participant {
         name: "Bob".to_string(),
         store_id: "05915a7ec111ff8070d380e71654d74d5e95418646b264eb2b94eca3541dfe54".to_string(),
-        mirror_url: "http://tun.hashlink.ch:8080".to_string(),
+        mirror_url: "http://chia-node2:8575".to_string(),
         clients: Clients {
             wallet: setup_wallet("node2", "127.0.0.1", 9251).await?,
             datalayer: setup_datalayer("node2", "127.0.0.1", 8561).await?,
