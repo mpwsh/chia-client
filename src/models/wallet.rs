@@ -21,7 +21,7 @@ pub struct OfferSummary {
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct OfferInfo {
-    pub tail: String,
+    pub tail: Option<String>,
     #[serde(rename = "type")]
     pub type_field: String,
 }
